@@ -37,7 +37,7 @@ def main() -> None:
 
     retrieval = MongoMemoryRetrievalStore(_Collections(db), search)
 
-    service = MemoryApiService(conversation, retrieval)
+    service = MemoryApiService(conversation, retrieval, sources_collection=db["source_records"])
 
     host = os.getenv("API_HOST", "127.0.0.1")
     port = int(os.getenv("API_PORT", "8000"))

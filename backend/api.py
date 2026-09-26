@@ -59,11 +59,45 @@ class MemoryApiService:
         *,
         clock: Callable[[], datetime] | None = None,
         token_counter: TokenCounter | None = None,
+        sources_collection: Any | None = None,
     ) -> None:
         self.conversation_store = conversation_store
         self.retrieval_store = retrieval_store
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.token_counter = token_counter
+        self.sources_collection = sources_collection
+
+    def get_raw_sources(self, source_ids: list[str], limit: int = 50) -> dict[str, Any]:
+        if self.sources_collection is None:
+            return {"sources": [], "text": "", "token_estimate": 0}
+        ids = source_ids[:limit]
+        docs = list(self.sources_collection.find(
+            {"unique_key": {"$in": ids}},
+            {"_id": 0, "unique_key": 1, "complaint_type": 1, "descriptor": 1,
+             "borough": 1, "incident_zip": 1, "incident_address": 1,
+             "created_date": 1, "resolution_description": 1, "location": 1},
+        ))
+        lines = []
+        for doc in docs:
+            parts = [f"[Record {doc.get('unique_key', '?')}]"]
+            if doc.get("complaint_type"):
+                parts.append(f"Type: {doc['complaint_type']}")
+            if doc.get("descriptor"):
+                parts.append(f"Descriptor: {doc['descriptor']}")
+            if doc.get("borough"):
+                parts.append(f"Borough: {doc['borough']}")
+            if doc.get("incident_zip"):
+                parts.append(f"Zip: {doc['incident_zip']}")
+            if doc.get("incident_address"):
+                parts.append(f"Address: {doc['incident_address']}")
+            if doc.get("created_date"):
+                parts.append(f"Date: {doc['created_date']}")
+            if doc.get("resolution_description"):
+                parts.append(f"Resolution: {doc['resolution_description']}")
+            lines.append(" | ".join(parts))
+        text = "\n".join(lines)
+        token_estimate = len(text.split())
+        return {"sources": docs, "text": text, "token_estimate": token_estimate, "count": len(docs)}
 
     def create_turn(
         self, session_id: str, prompt: str, idempotency_key: str
@@ -216,6 +250,18 @@ def _dispatch(
         except ValueError as exc:
             raise ValueError("limit must be an integer") from exc
         return {"messages": service.list_messages(parts[2], limit)}, 200
+
+    if len(parts) == 2 and parts[0] == "v1" and parts[1] == "sources":
+        if method != "POST":
+            return {"error": "method not allowed"}, 405
+        body = _read_json_body(environ)
+        ids = body.get("source_ids", [])
+        if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+            raise ValueError("source_ids must be a list of strings")
+        limit = body.get("limit", 50)
+        if not isinstance(limit, int) or limit < 1:
+            limit = 50
+        return service.get_raw_sources(ids, limit), 200
 
     return {"error": "route not found"}, 404
 
