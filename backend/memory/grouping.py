@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol
@@ -11,6 +12,12 @@ from backend.contracts import GroupingLimits, GroupingResult, MemoryEdge, Memory
 
 
 class GroupingStore(Protocol):
+    """Persistence operations used by grouping.
+
+    Implementations should make writes idempotent by the supplied summary and
+    edge IDs so an interrupted grouping pass can safely be retried.
+    """
+
     def graph_snapshot(self) -> tuple[str, Sequence[MemoryNode], Sequence[MemoryEdge]]: ...
     def insert_summary(self, summary: MemoryNode) -> None: ...
     def insert_member_edge(self, edge: MemoryEdge) -> None: ...
@@ -27,22 +34,28 @@ def _fingerprint(member_ids: Sequence[str]) -> str:
 
 
 def _cluster_projection(
-    nodes: Sequence[MemoryNode], edges: Sequence[MemoryEdge], limits: GroupingLimits,
+    nodes: Sequence[MemoryNode],
+    edges: Sequence[MemoryEdge],
+    limits: GroupingLimits,
+    as_of: datetime,
 ) -> tuple[nx.Graph, list[MemoryNode], bool]:
     candidates = sorted(
         (node for node in nodes
-         if node.kind in ('fact', 'pattern') and node.status == 'active' and node.group_id is None),
+         if node.kind in ('fact', 'pattern')
+         and node.status == 'active'
+         and node.group_id is None
+         and node.first_seen_at <= as_of),
         key=lambda node: node.id,
     )
     truncated = len(candidates) > limits.max_snapshot_nodes
     selected = candidates[:limits.max_snapshot_nodes]
     selected_ids = {node.id for node in selected}
     graph = nx.Graph()
-    graph.add_nodes_from(selected_ids)
+    graph.add_nodes_from(node.id for node in selected)
     for edge in sorted(edges, key=lambda item: item.id):
         if (edge.relation == 'related_to' and edge.source_id in selected_ids
                 and edge.target_id in selected_ids and edge.source_id != edge.target_id
-                and edge.weight > 0):
+                and math.isfinite(edge.weight) and edge.weight > 0):
             existing = graph.get_edge_data(edge.source_id, edge.target_id)
             graph.add_edge(
                 edge.source_id,
@@ -62,7 +75,7 @@ def _communities(graph: nx.Graph) -> list[list[str]]:
     for community in detected:
         subgraph = graph.subgraph(community)
         split.extend(sorted(component) for component in nx.connected_components(subgraph))
-    return sorted(split, key=lambda members: (len(members), members), reverse=True)
+    return sorted(split, key=lambda members: (-len(members), members))
 
 
 def group_oversized_clusters(
@@ -75,7 +88,7 @@ def group_oversized_clusters(
         raise ValueError('Grouping limits must be positive')
 
     snapshot_id, all_nodes, edges = store.graph_snapshot()
-    graph, selected, truncated = _cluster_projection(all_nodes, edges, limits)
+    graph, selected, truncated = _cluster_projection(all_nodes, edges, limits, as_of)
     communities = _communities(graph)
     by_id = {node.id: node for node in selected}
     eligible = [members for members in communities if len(members) > limits.grouping_threshold]
@@ -121,4 +134,5 @@ def group_oversized_clusters(
         context_tokens_before=before,
         context_tokens_after=after,
         truncated=truncated,
+        summary_text=summary.text,
     )

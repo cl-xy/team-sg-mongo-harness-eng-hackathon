@@ -100,7 +100,12 @@ def run_step(
             if grouping.summary_id:
                 emit('grouped', {
                     'summary_id': grouping.summary_id,
+                    'summary': grouping.summary_text,
                     'member_ids': grouping.selected_member_ids,
+                    'member_of_edges': [
+                        f'member-{grouping.summary_id}-{member_id}'
+                        for member_id in grouping.selected_member_ids
+                    ],
                     'context_tokens_before': grouping.context_tokens_before,
                     'context_tokens_after': grouping.context_tokens_after,
                 })

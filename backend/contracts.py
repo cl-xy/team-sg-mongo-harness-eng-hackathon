@@ -96,6 +96,7 @@ class GroupingResult:
     context_tokens_before: int
     context_tokens_after: int
     truncated: bool = False
+    summary_text: str | None = None
 
 
 @dataclass(slots=True)
