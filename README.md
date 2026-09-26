@@ -18,7 +18,11 @@ Not per-ticket triage. The agent detects patterns that only become visible over 
 
 **Complaint recurrence rate.** After the agent flags a systemic issue and recommends an intervention, did new complaints in that cluster drop in the following week? Measured directly from the data.
 
+This recurrence score and the feedback loop below are target behaviour; the current harness does not calculate or learn from post-recommendation outcomes.
+
 ## Architecture
+
+This section describes the target architecture. The implemented Python harness is narrower; see [Implemented Python Loop](#implemented-python-loop) and [Harness CLI](#harness-cli) for the current behaviour.
 
 ### Data Source
 
@@ -32,13 +36,12 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - Agent's triage decisions, conversation history
 - Current working context
 
-**Consolidation pass** (async LLM process)
+**Consolidation pass** (target design; current implementation runs per batch)
 
-- Triggers on threshold (size or time — TBD (@xinyi, @jiacheng))
-- Extracts salient patterns from short-term
-- Embeds patterns via Voyage AI Automated Embeddings
-- Writes to long-term memory
-- Prunes short-term
+- The Atlas harness currently uses a deterministic fixture extractor to create nodes for each batch
+- The merge engine writes and merges those nodes in long-term memory; Atlas Automated Embeddings powers vector search when its index is ready
+- LLM-based concept extraction and size/time-triggered consolidation remain future work
+- Source records are retained for provenance and replay
 
 **Long-term memory** (MongoDB Atlas collection + Vector Search)
 
@@ -47,19 +50,19 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - Edges between clusters (e.g. "noise cluster → sanitation complaints 2 days later")
 - Retrieved via vector similarity on each new complaint
 
-**Decay** (periodic process)
+**Decay** (planned; not implemented)
 
 - Long-term memories that never get retrieved lose salience
 - Prevents vector search degradation as store grows
 - Runs periodically (weekly or threshold-based)
 
-### Three Flows
+### Three Target Flows
 
 1. **Short-term → Long-term:** Consolidation pass extracts patterns, embeds, stores durably. (NREM replay)
 2. **Clustering within long-term:** Related patterns get grouped into higher-order nodes with relational edges. (REM recombination)
 3. **Decay:** Stale memories that stopped being relevant fade. (Synaptic homeostasis)
 
-### Feedback Loop
+### Feedback Loop (planned)
 
 1. Agent flags systemic issue + recommends intervention
 2. Monitor complaint recurrence rate in that cluster over following days
@@ -75,7 +78,7 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - **Agent orchestration (implemented):** custom Python CLI and harness loop (`scripts.run_harness` → `backend.harness.run_step`)
 - **Agent framework (planned):** Strands is not currently used by the harness
 - **Models:** via OpenRouter
-- **Frontend:** Vercel v0 (Next.js dashboard)
+- **Frontend (planned):** Vercel v0 (Next.js dashboard; not implemented in this repository)
 
 ### Implemented Python Loop
 
@@ -156,6 +159,20 @@ uv run python -m scripts.run_harness \
 ```
 
 The bundled `backend.runtime:create_services` factory is a deterministic, in-memory integration adapter; it does not connect to Atlas or call an LLM. It groups repeated observations using the available complaint type, descriptor and borough/ZIP fields; recommendations are explicitly labelled hypotheses, not validated root causes. Use `--mode baseline` for the no-retrieval comparison; baseline runs ingest and recommend without extracting, merging or grouping memories. The CLI prints ordered JSON trace events and exits non-zero if the run emits an error.
+
+## Demo run
+
+Proven end-to-end path against Atlas: deterministic extraction and merge, Louvain grouping, vector-seeded historical retrieval, and a model-written upstream-fix hypothesis citing current and historical source IDs. One 500-record batch emits every trace event type in about 30 seconds:
+
+```sh
+GROUPING_THRESHOLD=3 uv run python -m scripts.run_harness \
+  --records fixtures/311-small.json \
+  --services backend.atlas:create_fast_services \
+  --mode memory \
+  --batch-size 500
+```
+
+`backend.atlas:create_merge_services` runs Jiacheng's durable merge engine with the OpenRouter identity judge and Matthew's bounded graph retrieval through the same harness. It is slower and needs any pending batch recovered first; it is not the recorded demo path.
 
 ## Submission
 
