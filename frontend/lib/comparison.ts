@@ -13,13 +13,17 @@ export class MemoryClient {
   constructor(
     private baseUrl: string,
     private fetcher: typeof fetch = fetch,
+    private apiToken?: string,
   ) {}
   async request(method: string, path: string, body?: unknown) {
     const response = await this.fetcher(
       `${this.baseUrl.replace(/\/$/, "")}${path}`,
       {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.apiToken ? { Authorization: `Bearer ${this.apiToken}` } : {}),
+        },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(30_000),
         cache: "no-store",
@@ -44,6 +48,7 @@ export type ComparisonInput = {
 };
 export type ComparisonConfig = {
   apiUrl: string;
+  memoryApiToken?: string;
   apiKey: string;
   model: string;
   fetcher?: typeof fetch;
@@ -93,7 +98,7 @@ export async function compareResponses(
   config: ComparisonConfig,
 ): Promise<DashboardData> {
   const fetcher = config.fetcher || fetch;
-  const client = new MemoryClient(config.apiUrl, fetcher);
+  const client = new MemoryClient(config.apiUrl, fetcher, config.memoryApiToken);
   const path = `/v1/sessions/${encodeURIComponent(input.session_id)}`;
   const baselinePath = `/v1/sessions/${encodeURIComponent(`${input.session_id}.baseline`)}`;
   const { messages } = await client.request("GET", `${path}/messages?limit=20`);

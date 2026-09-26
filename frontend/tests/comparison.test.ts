@@ -17,12 +17,12 @@ const context = {
 };
 
 test("uses PR #4 routes, identical history and model settings, and adds memory only to our response", async () => {
-  const requests: { url: string; body: any }[] = [];
+  const requests: { url: string; body: any; headers: HeadersInit | undefined }[] = [];
   const modelRequests: any[] = [];
   const mockFetch: typeof fetch = async (input, init) => {
     const url = String(input);
     const body = init?.body ? JSON.parse(String(init.body)) : null;
-    requests.push({ url, body });
+    requests.push({ url, body, headers: init?.headers });
     if (url.includes("openrouter.ai")) {
       modelRequests.push(body);
       return Response.json({
@@ -38,6 +38,8 @@ test("uses PR #4 routes, identical history and model settings, and adds memory o
         ],
       });
     if (url.endsWith("/context")) return Response.json(context);
+    if (url.endsWith("/v1/sources"))
+      return Response.json({ text: "Current complaint record [current-source]" });
     if (url.endsWith("/response"))
       return Response.json({ message: { content: body.content } });
     if (url.endsWith("/turns")) return Response.json({ turn_id: "turn-1" });
@@ -47,6 +49,7 @@ test("uses PR #4 routes, identical history and model settings, and adds memory o
     { prompt: "What changed?", session_id: "demo", request_id: "request-1" },
     {
       apiUrl: "http://memory.test",
+      memoryApiToken: "memory-token",
       apiKey: "test-key",
       model: "test-model",
       fetcher: mockFetch,
@@ -67,6 +70,11 @@ test("uses PR #4 routes, identical history and model settings, and adds memory o
   );
   assert.equal(requests.filter((r) => r.url.endsWith("/context")).length, 1);
   assert.equal(requests.filter((r) => r.url.endsWith("/response")).length, 2);
+  assert.equal(
+    (requests.find((r) => r.url.endsWith("/v1/sources"))?.headers as Record<string, string>)
+      .Authorization,
+    "Bearer memory-token",
+  );
   assert.deepEqual(result.baseline.historical_source_ids, []);
   assert.deepEqual(result.memory.historical_source_ids, ["old-source"]);
   assert.equal(result.memory.input_tokens, 15);

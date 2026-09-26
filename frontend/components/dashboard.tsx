@@ -961,6 +961,7 @@ export default function Dashboard({
             </p>
             <pre>
               MEMORY_API_URL=http://127.0.0.1:8000{"\n"}
+              MEMORY_API_TOKEN=your-shared-token{"\n"}
               OPENROUTER_API_KEY=your-key{"\n"}OPENROUTER_MODEL=your-model
             </pre>
             <p className="inline-note">

@@ -4,6 +4,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const apiUrl = process.env.MEMORY_API_URL;
+  const memoryApiToken = process.env.MEMORY_API_TOKEN;
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL;
   if (!apiUrl || !apiKey || !model)
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     }
     const result = await compareResponses(
       { ...body, prompt: body.prompt.trim() },
-      { apiUrl, apiKey, model },
+      { apiUrl, memoryApiToken, apiKey, model },
     );
     return Response.json(result);
   } catch (error) {
