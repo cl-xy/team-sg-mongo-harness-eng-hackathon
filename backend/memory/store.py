@@ -184,6 +184,32 @@ class MongoMemoryStore:
     def get_node(self, id): return self.nodes.find_one({'id': id}, {'_id': 0})
     def get_batch(self, batch_id): return self.batches.find_one({'batch_id': batch_id}, {'_id': 0})
 
+    def get_memory_nodes(self, node_ids):
+        return list(self.nodes.find({'id': {'$in': list(node_ids)}}, {'_id': 0, 'embedding': 0}))
+
+    def get_memory_edges(self, node_ids, limit):
+        if not node_ids or limit <= 0:
+            return []
+        return list(self.edges.find({
+            '$or': [
+                {'source_id': {'$in': list(node_ids)}},
+                {'target_id': {'$in': list(node_ids)}},
+            ],
+        }, {'_id': 0}).sort('id', 1).limit(limit))
+
+    def get_source_records(self, source_ids):
+        if not source_ids:
+            return []
+        return list(self.sources.find({'id': {'$in': list(source_ids)}}, {'_id': 0}))
+
+    def mark_nodes_retrieved(self, node_ids, retrieved_at):
+        if not node_ids:
+            return
+        self.nodes.update_many(
+            {'id': {'$in': list(node_ids)}},
+            {'$inc': {'retrieval_count': 1}, '$set': {'last_retrieved_at': utc(retrieved_at)}},
+        )
+
     def exact_candidates(self, candidate):
         return list(self.nodes.find({
             'kind': candidate['kind'], 'scope_key': candidate['scope_key'],

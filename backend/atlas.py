@@ -131,7 +131,7 @@ class AtlasHarnessServices(InMemoryHarnessServices):
         self._upsert_nodes(member_ids)
 
 
-def create_services() -> AtlasHarnessServices:
+def create_legacy_services() -> AtlasHarnessServices:
     env = _load_env()
     return AtlasHarnessServices(
         connect(),
@@ -157,6 +157,7 @@ def create_merge_services():
     depends on an index that is still building.
     """
     from backend.memory.embeddings import AtlasMemorySearch, OpenRouterJudge, configure_search
+    from backend.memory.retrieval import RetrievalLimits, retrieve_context
     from backend.memory.services import MemoryHarnessServices
     from backend.memory.store import MongoMemoryStore
 
@@ -173,7 +174,10 @@ def create_merge_services():
     search = ExactOnlySearch()
     try:
         atlas_search = AtlasMemorySearch.from_env(store.nodes)
-        atlas_search.ensure_index()
+        try:
+            atlas_search.ensure_index()
+        except ValueError:
+            pass  # an index with this name already exists; use it if it is ready
         indexes = list(store.nodes.list_search_indexes(name=atlas_search.index_name))
         if indexes and indexes[0].get('status') == 'READY' and indexes[0].get('queryable'):
             search = atlas_search
@@ -204,15 +208,83 @@ def create_merge_services():
             recommender.latest_summary, fallback,
         )
 
+    retrieval_store = MongoRetrievalStore(store.database, search)
+
     def retrieve(query, session_id, as_of):
         if search.mode == 'none':
             return RetrievedContext([], [], [], [], '', 0, False)
-        hits = search.search_memories(query[:2000], limit=5, filters={'last_seen_at': {'$lte': as_of}})
-        source_ids = sorted({source_id for hit in hits for source_id in hit.get('source_ids', [])})
-        text = '\n'.join(hit['text'] for hit in hits)
-        return RetrievedContext([hit['id'] for hit in hits], [], [], source_ids, text, len(text.split()), False)
+        result = retrieve_context(
+            query[:2000],
+            session_id,
+            as_of,
+            RetrievalLimits(),
+            store=retrieval_store,
+        )
+        return RetrievedContext(
+            seed_ids=result.seed_ids,
+            nodes=[MemoryNode(
+                id=node.id,
+                kind=node.kind,
+                text=node.text,
+                scope_key=node.scope_key,
+                source_ids=list(node.source_ids),
+                first_seen_at=node.first_seen_at or as_of,
+                last_seen_at=node.last_seen_at or as_of,
+                status=node.status,
+                group_id=node.group_id,
+            ) for node in result.nodes],
+            edges=[MemoryEdge(
+                id=edge.id,
+                source_id=edge.source_id,
+                target_id=edge.target_id,
+                relation=edge.relation,
+                weight=edge.weight,
+                source_ids=list(edge.source_ids),
+            ) for edge in result.edges],
+            source_ids=result.source_ids,
+            context_text=result.context_text,
+            token_count=result.token_count,
+            truncated=result.truncated,
+        )
 
     return MemoryHarnessServices(
         store, search, judge=judge,
         extract=fixture.extract, retrieve=retrieve, recommend=recommend, build_summary=build_summary,
     )
+
+
+def create_services():
+    """Create the Atlas-backed merge, bounded-retrieval, and harness services."""
+    return create_merge_services()
+
+
+class MongoRetrievalStore:
+    """Matthew's RetrievalStore over Jiacheng's Mongo collections and vector search."""
+
+    def __init__(self, database: Database, search) -> None:
+        self.database = database
+        self.search = search
+
+    def search_memories(self, text: str, limit: int, filters) -> list[dict]:
+        hits = self.search.search_memories(text, min(max(limit, 1), 100), dict(filters))
+        return [{'node': hit, 'score': hit.get('score', 0.0)} for hit in hits]
+
+    def get_memory_nodes(self, node_ids: Sequence[str]) -> list[dict]:
+        return list(self.database.memory_nodes.find({'id': {'$in': list(node_ids)}}, {'_id': False}))
+
+    def get_memory_edges(self, node_ids: Sequence[str], limit: int) -> list[dict]:
+        ids = list(node_ids)
+        cursor = self.database.memory_edges.find(
+            {'$or': [{'source_id': {'$in': ids}}, {'target_id': {'$in': ids}}]}, {'_id': False},
+        ).sort('id', 1).limit(max(limit, 1))
+        return list(cursor)
+
+    def get_source_records(self, source_ids: Sequence[str]) -> list[dict]:
+        return list(self.database.source_records.find({'id': {'$in': list(source_ids)}}, {'_id': False}))
+
+    def mark_nodes_retrieved(self, node_ids: Sequence[str], retrieved_at: datetime) -> None:
+        self.database.memory_nodes.update_many(
+            {'id': {'$in': list(node_ids)}},
+            {'$inc': {'retrieval_count': 1}, '$set': {'last_retrieved_at': retrieved_at}},
+        )
+

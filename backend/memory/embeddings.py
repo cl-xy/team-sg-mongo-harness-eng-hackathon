@@ -16,7 +16,7 @@ from .merge import plain
 
 
 LOGGER = logging.getLogger(__name__)
-FILTER_FIELDS = ('id', 'kind', 'scope_key', 'status', 'first_seen_at', 'last_seen_at', 'source_ids')
+FILTER_FIELDS = ('id', 'kind', 'scope_key', 'status', 'first_seen_at', 'last_seen_at', 'source_ids', 'group_id')
 
 
 def post_json(url, api_key, body):
