@@ -231,28 +231,6 @@ export default function Evaluation({
                   </td>
                   <td>Model generation time</td>
                 </tr>
-                {data.retrieval_ms != null &&
-                  data.memory.latency_ms != null && (
-                    <tr>
-                      <td>
-                        <strong>Total time to pattern</strong>
-                      </td>
-                      <td>
-                        {data.baseline.latency_ms != null
-                          ? `${data.baseline.latency_ms} ms`
-                          : "—"}
-                      </td>
-                      <td>
-                        <strong>
-                          {data.retrieval_ms + data.memory.latency_ms} ms
-                        </strong>
-                      </td>
-                      <td>
-                        Retrieval + generation; baseline has no pre-computed
-                        patterns
-                      </td>
-                    </tr>
-                  )}
               </tbody>
             </table>
           </div>
