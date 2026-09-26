@@ -164,3 +164,9 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 ## Key Differentiator
 
 Not naive summarisation or unlimited accumulation. Brain-inspired memory management: consolidation (what survives), abstraction (clustering into higher-order patterns), and decay (pruning what's no longer relevant). Better context retrieval with fewer tokens.
+
+## Attributions
+
+We were thinking of grounding / mimicking memory storage grounded on biology: the human brain. On literature review, we discovered this paper: Kerestecioglu, D., Robsky, A., Vasters, C., Sharma, A., & Kesselman, Y. (2026). Human-inspired memory architecture for LLM agents. arXiv preprint arXiv:2605.08538. https://arxiv.org/abs/2605.08538.
+
+In "Future Work", "while exercising the high-volume, repetitive event regime our architecture targets" → this is exactly what 311 data is.

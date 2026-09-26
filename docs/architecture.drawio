@@ -1,0 +1,219 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device" version="26.0.0">
+  <diagram id="01-architecture" name="01 Architecture">
+    <mxGraphModel dx="1800" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;TEAM SINGAPORE · LONG HORIZON ENGINEERING&lt;/b&gt;&lt;br&gt;&lt;br&gt;Proposed architecture from README.md · NYC 311 systemic-issue detection" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="50" y="25" width="1650" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="source" value="&lt;b&gt;NYC 311 Open Data&lt;/b&gt;&lt;br&gt;&lt;br&gt;Socrata API&lt;br&gt;Complaint details, location, timestamps&lt;br&gt;Daily updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="160" width="280" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="replay" value="&lt;b&gt;Ingestion / timestamp replay&lt;/b&gt;&lt;br&gt;&lt;br&gt;Stream complaints into working memory&lt;br&gt;Replay historical timestamps for evaluation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="160" width="280" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="agent" value="&lt;b&gt;Agent harness · Strands*&lt;/b&gt;&lt;br&gt;&lt;br&gt;Retrieve context; identify recurring issues;&lt;br&gt;recommend upstream interventions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="160" width="330" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="models" value="&lt;b&gt;OpenRouter&lt;/b&gt;&lt;br&gt;&lt;br&gt;Model access for agent reasoning&lt;br&gt;and asynchronous LLM consolidation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="160" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp" value="&lt;b&gt;Atlas Managed MCP Server&lt;/b&gt;&lt;br&gt;&lt;br&gt;Agent read/write tool calls&lt;br&gt;Atlas service account" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="350" width="330" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="short" value="&lt;b&gt;Short-term memory&lt;/b&gt;&lt;br&gt;&lt;br&gt;Raw complaints · decisions&lt;br&gt;Conversation history · working context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="570" width="300" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="consolidate" value="&lt;b&gt;Asynchronous consolidation&lt;/b&gt;&lt;br&gt;&lt;br&gt;Extract salient patterns&lt;br&gt;Write long-term patterns&lt;br&gt;Prune short-term memory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="570" width="300" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="long" value="&lt;b&gt;Long-term memory&lt;/b&gt;&lt;br&gt;&lt;br&gt;Embedded pattern documents&lt;br&gt;Higher-order cluster nodes and edges&lt;br&gt;Voyage AI Automated Embeddings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="840" y="550" width="350" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="search" value="&lt;b&gt;Atlas Vector Search + Search&lt;/b&gt;&lt;br&gt;&lt;br&gt;Similarity retrieval per new complaint&lt;br&gt;Keyword / full-text queries as needed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="550" width="400" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="cluster" value="&lt;b&gt;Clustering / abstraction&lt;/b&gt;&lt;br&gt;&lt;br&gt;Group related patterns&lt;br&gt;Add relationships across clusters" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="840" y="790" width="350" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="decay" value="&lt;b&gt;Periodic decay&lt;/b&gt;&lt;br&gt;&lt;br&gt;Reduce salience of unused memories&lt;br&gt;Deprioritise or prune stale patterns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="790" width="400" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="atlas" value="&lt;b&gt;MONGODB ATLAS · required hackathon sandbox&lt;/b&gt;&lt;br&gt;&lt;br&gt;Short-term and long-term collections; automated embeddings and search indexes" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="60" y="465" width="1640" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="output" value="&lt;b&gt;Systemic issue + recommendation&lt;/b&gt;&lt;br&gt;&lt;br&gt;Cluster-level upstream fix&lt;br&gt;Recommendation does not establish&lt;br&gt;that an intervention was executed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1020" width="350" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="feedback" value="&lt;b&gt;Recurrence scoring / feedback&lt;/b&gt;&lt;br&gt;&lt;br&gt;Observe subsequent cluster complaints&lt;br&gt;Did recurrence drop over the next week?&lt;br&gt;Adjust trust, priority and escalation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="1020" width="420" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="dashboard" value="&lt;b&gt;Next.js dashboard · Vercel v0&lt;/b&gt;&lt;br&gt;&lt;br&gt;Observe agent context, memory and tools&lt;br&gt;Demo: arrivals → patterns → issue → decay" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="1020" width="370" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="notes" value="&lt;b&gt;OPEN DESIGN CHOICES&lt;/b&gt;&lt;br&gt;&lt;br&gt;*Strands is the named stack choice; framework choice remains open in README.md.&lt;br&gt;Consolidation trigger: size / time / hybrid · Graph: explicit edges / vector proximity · Decay: retrieval / time / hybrid" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1180" width="1650" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="complaints" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="source" target="replay">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="new complaint" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="replay" target="agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="persist arrivals" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="replay" target="short">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="310" />
+              <mxPoint x="220" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="reasoning" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7c3aed;fontColor=#7c3aed;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="agent" target="models">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="read / write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="agent" target="mcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="working context" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="mcp" target="short">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="400" />
+              <mxPoint x="220" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" value="retrieve relevant patterns" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="mcp" target="search">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="400" />
+              <mxPoint x="1500" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="threshold trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="short" target="consolidate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="patterns → embed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7c3aed;fontColor=#7c3aed;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="consolidate" target="long">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="LLM pass" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7c3aed;fontColor=#7c3aed;fontSize=13;labelBackgroundColor=#ffffff;dashed=1;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="consolidate" target="models">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="320" />
+              <mxPoint x="1380" y="320" />
+              <mxPoint x="1380" y="215" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="query indexes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="search" target="long">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="related patterns" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7c3aed;fontColor=#7c3aed;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="long" target="cluster">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="higher-order nodes / edges" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7c3aed;fontColor=#7c3aed;fontSize=13;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0.75;entryY=1;" edge="1" parent="1" source="cluster" target="long">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1230" y="840" />
+              <mxPoint x="1230" y="725" />
+              <mxPoint x="1100" y="725" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="salience updates / pruning" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7c3aed;fontColor=#7c3aed;fontSize=13;labelBackgroundColor=#ffffff;entryX=1;entryY=0.85;" edge="1" parent="1" source="decay" target="long">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1250" y="840" />
+              <mxPoint x="1250" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="flag + recommend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d97706;fontColor=#d97706;fontSize=13;labelBackgroundColor=#ffffff;exitX=0;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="agent" target="output">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="285" />
+              <mxPoint x="30" y="285" />
+              <mxPoint x="30" y="1080" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" value="track flagged cluster" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d97706;fontColor=#d97706;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="output" target="feedback">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="subsequent complaints" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d97706;fontColor=#d97706;fontSize=13;labelBackgroundColor=#ffffff;entryX=0;entryY=0.25;" edge="1" parent="1" source="short" target="feedback">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="955" />
+              <mxPoint x="700" y="955" />
+              <mxPoint x="700" y="1050" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e18" value="update pattern trust" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d97706;fontColor=#d97706;fontSize=13;labelBackgroundColor=#ffffff;exitX=0;exitY=0.2;entryX=0.1;entryY=1;" edge="1" parent="1" source="feedback" target="long">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="990" />
+              <mxPoint x="750" y="725" />
+              <mxPoint x="880" y="725" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e19" value="telemetry (conceptual)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;dashed=1;exitX=1;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="agent" target="dashboard">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1120" y="140" />
+              <mxPoint x="1760" y="140" />
+              <mxPoint x="1760" y="1080" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="02-evaluation" name="02 Evaluation">
+    <mxGraphModel dx="1800" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;EVALUATION · DOES DURABLE MEMORY HELP?&lt;/b&gt;&lt;br&gt;&lt;br&gt;Compare both runs on timestamped NYC 311 complaint replay" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="60" y="30" width="1460" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="replay" value="&lt;b&gt;Shared complaint replay&lt;/b&gt;&lt;br&gt;&lt;br&gt;Historical records delivered in timestamp order&lt;br&gt;Use matching input periods for both runs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="160" width="500" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="baseline" value="&lt;b&gt;Run A · naive baseline&lt;/b&gt;&lt;br&gt;&lt;br&gt;Sliding-window context&lt;br&gt;Oldest turns dropped or summarised&lt;br&gt;No long-term memory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#94a3b8;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="365" width="530" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="full" value="&lt;b&gt;Run B · proposed memory architecture&lt;/b&gt;&lt;br&gt;&lt;br&gt;Short-term → consolidation → long-term retrieval&lt;br&gt;Clustering / abstraction + decay&lt;br&gt;Durable patterns across days and weeks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="910" y="365" width="530" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="outputs" value="&lt;b&gt;Compare surfaced systemic issues&lt;/b&gt;&lt;br&gt;&lt;br&gt;Flagged clusters and recommended upstream fixes&lt;br&gt;Assess patterns that emerge beyond the immediate context window" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="605" width="720" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="metric" value="&lt;b&gt;Primary signal · complaint recurrence rate&lt;/b&gt;&lt;br&gt;&lt;br&gt;Observe new complaints in each flagged cluster over the following week.&lt;br&gt;Feed scores back into pattern trust, prioritisation and escalation.&lt;br&gt;Poor predictions lead to deprioritisation or pruning." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="800" width="720" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="caveat" value="&lt;b&gt;Measurement limitation&lt;/b&gt;&lt;br&gt;&lt;br&gt;A recommendation is not a verified intervention.&lt;br&gt;A later drop alone does not demonstrate causality.&lt;br&gt;Cluster definition and rate calculation remain unspecified." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontColor=#0f172a;fontSize=15;spacing=14;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="790" width="345" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="a" value="same input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="replay" target="baseline">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b" value="same input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="replay" target="full">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d" value="issues + recommendations" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="baseline" target="outputs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e" value="issues + recommendations" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="full" target="outputs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f" value="follow-up window" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontColor=#475569;fontSize=13;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="outputs" target="metric">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
