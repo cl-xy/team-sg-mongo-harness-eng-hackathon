@@ -1,0 +1,34 @@
+{
+  "source": "NYC Open Data / 311 Service Requests from 2010 to Present",
+  "dataset_id": "erm2-nwe9",
+  "endpoint": "https://data.cityofnewyork.us/resource/erm2-nwe9.json",
+  "deduplication_key": "unique_key",
+  "record_count": 150,
+  "sample_dates": [
+    "2026-08-26",
+    "2026-08-29",
+    "2026-09-01",
+    "2026-09-04",
+    "2026-09-08",
+    "2026-09-11",
+    "2026-09-15",
+    "2026-09-18",
+    "2026-09-22",
+    "2026-09-25"
+  ],
+  "selected_fields": [
+    "unique_key",
+    "complaint_type",
+    "descriptor",
+    "agency",
+    "borough",
+    "incident_zip",
+    "created_date",
+    "closed_date",
+    "resolution_description",
+    "latitude",
+    "longitude",
+    "location"
+  ],
+  "fixture_sha256": "0994d34207e9f9784b85805c8ddc5d53f7ed9eaf59db0eb768dbfe172fec6a18"
+}
