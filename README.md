@@ -72,7 +72,7 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - **Data layer:** MongoDB Atlas (hackathon sandbox — MUST use this for finalist eligibility)
 - **Embeddings:** Voyage AI (Automated Embeddings in Atlas)
 - **Search:** Atlas Vector Search + Atlas Search
-- **Agent framework:** TBD (Strands / LangGraph / custom)
+- **Agent framework:** Strands
 - **Models:** via OpenRouter
 - **Frontend:** Vercel v0 (Next.js dashboard)
 
