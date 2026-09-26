@@ -44,7 +44,7 @@ def _json_default(value: Any) -> Any:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='Run the 311 memory harness')
-    parser.add_argument('--records', required=True, type=Path, help='JSON array of source records')
+    parser.add_argument('--records', required=True, type=Path, help="JSON array of source records, or 'atlas' to read source_records from Atlas")
     parser.add_argument('--services', required=True, help='Services factory as module.path:function_name')
     parser.add_argument('--mode', choices=('baseline', 'memory'), default='memory')
     parser.add_argument('--session-id', default='311-demo')
@@ -53,7 +53,11 @@ def main() -> int:
     if arguments.batch_size < 1:
         parser.error('--batch-size must be positive')
 
-    records = _load_records(arguments.records)
+    if str(arguments.records) == 'atlas':
+        from backend.atlas import connect, load_source_records
+        records = load_source_records(connect())
+    else:
+        records = _load_records(arguments.records)
     services = _load_factory(arguments.services)()
     ordered = sorted(records, key=lambda record: (record.available_at, record.id))
     events = []
