@@ -57,7 +57,8 @@ Use string IDs at module boundaries; UTC timestamps; JSON-serialisable payloads.
 Public functions:
 
 ```python
-extract_concepts(records: list[SourceRecord], session_id: str) -> GraphBatch
+extract_concepts(records: list[SourceRecord], session_id: str, *, extractor,
+                 failure_sink=None, emit_error=None) -> GraphBatch
 merge_graph(batch: GraphBatch) -> MergeResult
 retrieve_context(query: str, session_id: str, as_of: datetime,
                  limits: RetrievalLimits) -> RetrievedContext
@@ -75,6 +76,28 @@ run_step(records: list[SourceRecord], mode: str) -> list[TraceEvent]
 - Distinguish observations from hypotheses. Complaints alone do not establish an unlicensed bar or another root cause.
 - Validate the result before persistence. Retry malformed output once; retain failed records for replay and emit an error instead of inventing a graph.
 - Extraction produces a short-term graph. It does not decide canonical long-term IDs.
+
+### Extraction integration contract
+
+Build a Socrata request with `bounded_311_query()` (its `$limit` is capped at
+1,000), convert returned rows with `source_record_from_311()`, then select a
+single recurring type/location group with `recurring_311_slice()`. This avoids
+loading the full 311 corpus. A selected group must have at least two records on
+at least two dates; an empty selection is a valid outcome, not a reason to
+broaden to the full dataset.
+
+Pass `extraction_request()` to the model adapter. It includes the prompt and
+JSON schema. Facts are source-block-scoped observations; patterns are
+source-derived-location-scoped observations or hypotheses. Causal statements,
+business identities, and permit claims must be hypotheses. The validator
+rejects multi-block facts, cross-location patterns, unknown provenance, and
+unlabelled assertions before returning the pending `GraphBatch`.
+
+At integration, always pass `JsonlFailureStore(Path("runtime/failed-extractions.jsonl"))`
+(or the equivalent Atlas collection adapter) as `failure_sink` and emit its
+payload through the harness trace writer as `emit_error`. After two malformed
+or failed attempts, the original source records are retained for replay and no
+graph batch is returned.
 
 ## Jiacheng — merging
 
