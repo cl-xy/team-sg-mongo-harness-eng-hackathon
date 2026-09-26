@@ -13,6 +13,7 @@ from pymongo.database import Database
 
 from backend.contracts import (
     GraphBatch,
+    GroupingLimits,
     MemoryEdge,
     MemoryNode,
     MergeResult,
@@ -66,6 +67,9 @@ class AtlasHarnessServices(InMemoryHarnessServices):
         self.openrouter_key = openrouter_key
         self.model = model
         self.latest_summary: str | None = None
+        threshold = os.environ.get('GROUPING_THRESHOLD') or _load_env().get('GROUPING_THRESHOLD')
+        if threshold:
+            self.grouping_limits = GroupingLimits(grouping_threshold=int(threshold))
         database.memory_nodes.create_index('id', unique=True)
         database.memory_nodes.create_index('source_ids')
         database.memory_edges.create_index('id', unique=True)
