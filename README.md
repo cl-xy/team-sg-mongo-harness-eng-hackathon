@@ -1,4 +1,4 @@
-# 311 Long-Horizon Agent
+# Team Singapore Long Horizon Engineering 🇸🇬
 
 ## Problem Statement
 
@@ -120,22 +120,10 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - Use to scaffold Next.js dashboard: "Build a dashboard that monitors my agent's context, memory and tool calls in real time"
 - Click Deploy for instant public URL for demo submission
 
-### 7. LangChain / LangGraph (if using)
-
-- Redeem $50 LangSmith credits within 10 days of hackathon
-- Starter templates: LangGraph docs, Deep Agents quickstart
-- Reference: Build an AI Agent with LangGraph and MongoDB Atlas
-
 ### 8. OpenAI Codex (optional)
 
 - 1250 credits, code sent at 10:30am
 - Must redeem with a FREE account (not a paid plan)
-
-### Skip
-
-- ElevenLabs (voice — not relevant)
-- Kiro (AWS IDE — you have Cursor)
-- Sample Movie Dataset (not using)
 
 ## Submission
 
@@ -158,8 +146,13 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 1. Show complaints arriving into short-term memory
 2. Show consolidation pass extracting patterns into long-term
 3. Show the agent surfacing a systemic issue that only emerges across days of data
-4. Show the metric: recurrence rate dropped after the agent's recommendation
-5. Show decay pruning stale patterns that are no longer relevant
+4. Show decay pruning stale patterns that are no longer relevant
+
+### Evaluation
+
+> Run A (naive baseline): sliding window context, no long-term memory. When context fills up, oldest turns get dropped or summarised. This is what ChatGPT/Claude does today.
+>
+> Run B (our architecture): short-term + consolidation + long-term retrieval + decay.
 
 ## Open Questions
 
