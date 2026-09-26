@@ -604,16 +604,9 @@ def _pack_edges(
 
 
 def _render_node(node: MemoryNode, score: float, depth: int) -> str:
-    visible_sources = node.source_ids[:_MAX_INLINE_SOURCE_IDS]
-    evidence = ", ".join(visible_sources)
-    remaining = len(node.source_ids) - len(visible_sources)
-    if remaining:
-        evidence += f", +{remaining} more in source_ids"
-    return (
-        f"[Memory {node.id} | {node.kind} | depth {depth} | relevance {score:.4f}]\n"
-        f"{node.text.strip()}\n"
-        f"Sources: {evidence}"
-    )
+    src_count = len(node.source_ids)
+    suffix = f" [{src_count} sources]" if src_count else ""
+    return f"- {node.text.strip()}{suffix}"
 
 
 def _render_context(
@@ -631,10 +624,7 @@ def _render_context(
     edge_line_by_id: dict[str, str] = {}
     if edges:
         edge_line_by_id = {
-            edge.id: (
-                f"[Graph link] {edge.source_id} --{edge.relation}--> {edge.target_id}"
-                + (f" (sources: {', '.join(edge.source_ids)})" if edge.source_ids else "")
-            )
+            edge.id: f"- {edge.relation}: {edge.source_id} → {edge.target_id}"
             for edge in edges
             if edge.source_id in node_ids and edge.target_id in node_ids
         }
@@ -682,4 +672,4 @@ def _empty_context() -> RetrievedContext:
 
 
 def _context_prefix() -> str:
-    return "Retrieved long-term memory (cite source IDs in answers):"
+    return "Knowledge graph patterns:"
