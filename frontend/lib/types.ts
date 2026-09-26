@@ -68,6 +68,7 @@ export type DashboardData = {
   memory: ResponseResult;
   context: Context;
   prompt: string;
+  retrieval_ms?: number | null;
 };
 export type Message = {
   id: string;

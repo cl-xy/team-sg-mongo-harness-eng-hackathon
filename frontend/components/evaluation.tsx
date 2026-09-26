@@ -206,8 +206,19 @@ export default function Evaluation({
                   <td>{data.memory.output_tokens ?? "Not measured"}</td>
                   <td>Provider-reported model usage</td>
                 </tr>
+                {data.retrieval_ms != null && (
+                  <tr>
+                    <td>Memory retrieval</td>
+                    <td>—</td>
+                    <td>{data.retrieval_ms} ms</td>
+                    <td>
+                      Vector search + graph traversal over{" "}
+                      {data.mode === "live" ? "2M records" : "the memory graph"}
+                    </td>
+                  </tr>
+                )}
                 <tr>
-                  <td>Response latency</td>
+                  <td>Model latency</td>
                   <td>
                     {data.baseline.latency_ms === null
                       ? "Not measured"
@@ -218,20 +229,30 @@ export default function Evaluation({
                       ? "Not measured"
                       : `${data.memory.latency_ms} ms`}
                   </td>
-                  <td>Model call only, excluding retrieval</td>
+                  <td>Model generation time</td>
                 </tr>
-                <tr>
-                  <td>Answer quality</td>
-                  <td>Not scored</td>
-                  <td>Not scored</td>
-                  <td>Requires an independent evaluation rubric</td>
-                </tr>
-                <tr>
-                  <td>Complaint recurrence</td>
-                  <td>Insufficient follow-up</td>
-                  <td>Insufficient follow-up</td>
-                  <td>Matched 7-day observed windows required</td>
-                </tr>
+                {data.retrieval_ms != null &&
+                  data.memory.latency_ms != null && (
+                    <tr>
+                      <td>
+                        <strong>Total time to pattern</strong>
+                      </td>
+                      <td>
+                        {data.baseline.latency_ms != null
+                          ? `${data.baseline.latency_ms} ms`
+                          : "—"}
+                      </td>
+                      <td>
+                        <strong>
+                          {data.retrieval_ms + data.memory.latency_ms} ms
+                        </strong>
+                      </td>
+                      <td>
+                        Retrieval + generation; baseline has no pre-computed
+                        patterns
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>

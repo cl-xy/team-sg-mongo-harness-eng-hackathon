@@ -32,7 +32,10 @@ export default function MemoryGraph({
             ),
         );
         return {
-          label: `Memory group ${index + 1}`,
+          label: (() => {
+            const m = summary.text.match(/(\d+) related.*?: (.+?)(?:\s+reported|\s*$)/);
+            return m ? `${m[2]} (${m[1]} obs.)` : summary.text.slice(0, 40) || `Memory group ${index + 1}`;
+          })(),
           nodes: [summary, ...members.slice(0, 10)],
           total: members.length,
         };
