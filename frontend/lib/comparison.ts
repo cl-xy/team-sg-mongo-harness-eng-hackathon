@@ -199,14 +199,14 @@ export async function compareResponses(
     client.request(
       "POST",
       `${path}/turns/${encodeURIComponent(turn.turn_id)}/response`,
-      { content: memory.text, idempotency_key: `${turn.turn_id}:assistant` },
+      { content: memory.text, idempotency_key: `${turn.turn_id}-assistant` },
     ),
     client.request(
       "POST",
       `${baselinePath}/turns/${encodeURIComponent(baselineTurn.turn_id)}/response`,
       {
         content: baseline.text,
-        idempotency_key: `${baselineTurn.turn_id}:assistant`,
+        idempotency_key: `${baselineTurn.turn_id}-assistant`,
       },
     ),
   ]);
