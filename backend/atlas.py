@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from pymongo import MongoClient, UpdateOne
+from pymongo.errors import OperationFailure
 from pymongo.database import Database
 
 from backend.contracts import (
@@ -136,4 +137,82 @@ def create_services() -> AtlasHarnessServices:
         connect(),
         openrouter_key=env.get('OPENROUTER_API_KEY'),
         model=env.get('OPENROUTER_MODEL', DEFAULT_MODEL),
+    )
+
+
+class ExactOnlySearch:
+    """Explicit no-vector search: the merge engine falls back to exact identity keys."""
+
+    mode = 'none'
+
+    def search_memories(self, text: str, limit: int = 5, filters: dict | None = None) -> list[dict]:
+        return []
+
+
+def create_merge_services():
+    """Jiacheng's merge engine and Mongo store behind the shared harness boundary.
+
+    Uses Atlas Vector Search when the automated-embedding index is queryable,
+    otherwise an explicit exact-identity search so the run never silently
+    depends on an index that is still building.
+    """
+    from backend.memory.embeddings import AtlasMemorySearch, OpenRouterJudge, configure_search
+    from backend.memory.services import MemoryHarnessServices
+    from backend.memory.store import MongoMemoryStore
+
+    env = _load_env()
+    os.environ.update({key: value for key, value in env.items() if key not in os.environ})
+    os.environ.setdefault('OPENROUTER_MODEL', DEFAULT_MODEL)
+    store = MongoMemoryStore.from_env()
+    try:
+        store.ensure_indexes()
+    except OperationFailure as error:
+        if error.code != 85:  # IndexOptionsConflict: an equivalent index exists under another name
+            raise
+
+    search = ExactOnlySearch()
+    try:
+        atlas_search = AtlasMemorySearch.from_env(store.nodes)
+        atlas_search.ensure_index()
+        indexes = list(store.nodes.list_search_indexes(name=atlas_search.index_name))
+        if indexes and indexes[0].get('status') == 'READY' and indexes[0].get('queryable'):
+            search = atlas_search
+    except Exception:
+        pass
+    configure_search(search)
+
+    judge = OpenRouterJudge.from_env() if env.get('OPENROUTER_API_KEY') else None
+    fixture = InMemoryHarnessServices()
+    recommender = AtlasHarnessServices.__new__(AtlasHarnessServices)
+    InMemoryHarnessServices.__init__(recommender)
+    recommender.openrouter_key = env.get('OPENROUTER_API_KEY')
+    recommender.model = os.environ['OPENROUTER_MODEL']
+    recommender.latest_summary = None
+
+    def build_summary(members):
+        text = fixture.build_summary(members)
+        recommender.latest_summary = text
+        return text
+
+    def recommend(records, context):
+        fallback = InMemoryHarnessServices.recommend(recommender, records, context)
+        fallback['search'] = search.mode
+        if not recommender.openrouter_key:
+            return {**fallback, 'recommender': 'template'}
+        return model_recommendation(
+            recommender.openrouter_key, recommender.model, records, context,
+            recommender.latest_summary, fallback,
+        )
+
+    def retrieve(query, session_id, as_of):
+        if search.mode == 'none':
+            return RetrievedContext([], [], [], [], '', 0, False)
+        hits = search.search_memories(query[:2000], limit=5, filters={'last_seen_at': {'$lte': as_of}})
+        source_ids = sorted({source_id for hit in hits for source_id in hit.get('source_ids', [])})
+        text = '\n'.join(hit['text'] for hit in hits)
+        return RetrievedContext([hit['id'] for hit in hits], [], [], source_ids, text, len(text.split()), False)
+
+    return MemoryHarnessServices(
+        store, search, judge=judge,
+        extract=fixture.extract, retrieve=retrieve, recommend=recommend, build_summary=build_summary,
     )
