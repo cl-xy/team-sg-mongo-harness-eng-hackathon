@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Sequence
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -39,6 +39,11 @@ def connect() -> Database:
     return client[env.get('MONGODB_DATABASE', '311_memory')]
 
 
+def _contract_fields(contract, document: dict) -> dict:
+    names = {item.name for item in fields(contract)}
+    return {key: value for key, value in document.items() if key in names}
+
+
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
@@ -73,9 +78,9 @@ class AtlasHarnessServices(InMemoryHarnessServices):
                 document[key] = _aware(document[key])
             if document.get('last_retrieved_at'):
                 document['last_retrieved_at'] = _aware(document['last_retrieved_at'])
-            self.nodes[document['id']] = MemoryNode(**document)
+            self.nodes[document['id']] = MemoryNode(**_contract_fields(MemoryNode, document))
         for document in self.database.memory_edges.find({}, {'_id': False}):
-            self.edges[document['id']] = MemoryEdge(**document)
+            self.edges[document['id']] = MemoryEdge(**_contract_fields(MemoryEdge, document))
         for document in self.database.short_term_batches.find({'status': 'committed'}, {'batch_id': True}):
             self._batches.add(document['batch_id'])
 
@@ -288,3 +293,13 @@ class MongoRetrievalStore:
             {'$inc': {'retrieval_count': 1}, '$set': {'last_retrieved_at': retrieved_at}},
         )
 
+
+
+def create_fast_services() -> AtlasHarnessServices:
+    """Deterministic merge with Atlas persistence and the model recommender; proven demo path."""
+    env = _load_env()
+    return AtlasHarnessServices(
+        connect(),
+        openrouter_key=env.get('OPENROUTER_API_KEY'),
+        model=env.get('OPENROUTER_MODEL', DEFAULT_MODEL),
+    )
