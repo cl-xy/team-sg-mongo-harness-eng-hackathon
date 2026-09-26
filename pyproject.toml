@@ -12,6 +12,7 @@ include = ["backend*"]
 
 [dependency-groups]
 dev = [
+    "mongomock>=4.3.0",
     "pytest>=9.1.1",
 ]
 
