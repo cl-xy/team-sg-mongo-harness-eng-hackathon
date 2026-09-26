@@ -26,11 +26,13 @@ export class MemoryClient {
       },
     );
     const data = await response.json();
-    if (!response.ok)
+    if (!response.ok) {
+      console.error(`Memory API error: ${method} ${path} → ${response.status}`, data);
       throw new UpstreamError(
-        `Memory API: ${data.error || `HTTP ${response.status}`}`,
+        `Memory API [${method} ${path}]: ${data.error || `HTTP ${response.status}`}`,
         response.status,
       );
+    }
     return data;
   }
 }

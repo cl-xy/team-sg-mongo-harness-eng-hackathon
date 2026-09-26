@@ -370,23 +370,31 @@ def _load_summary_members(
         len(member_ids), max(limits.max_members_per_summary * 4, limits.max_members_per_summary)
     )
     member_candidate_limit = min(requested_member_candidates, 100)
-    member_hits = store.search_memories(
-        query,
-        member_candidate_limit,
-        {
-            "status": "active",
-            "group_id": summary.id,
-            "first_seen_at": {"$lte": as_of},
-            "last_seen_at": {"$lte": as_of},
-        },
-    )
     allowed_ids = set(member_ids)
-    ranked_hits: list[tuple[MemoryNode, float]] = []
-    for document in member_hits:
-        raw_node, score = _hit_parts(document)
-        node = _parse_node(raw_node)
-        if node.id in allowed_ids:
-            ranked_hits.append((node, score))
+    try:
+        member_hits = store.search_memories(
+            query,
+            member_candidate_limit,
+            {
+                "status": "active",
+                "group_id": summary.id,
+                "first_seen_at": {"$lte": as_of},
+                "last_seen_at": {"$lte": as_of},
+            },
+        )
+        ranked_hits: list[tuple[MemoryNode, float]] = []
+        for document in member_hits:
+            raw_node, score = _hit_parts(document)
+            node = _parse_node(raw_node)
+            if node.id in allowed_ids:
+                ranked_hits.append((node, score))
+    except Exception:
+        member_docs = store.get_memory_nodes(list(allowed_ids)[:member_candidate_limit])
+        ranked_hits = [
+            (_parse_node(doc), 0.5)
+            for doc in member_docs
+            if _parse_node(doc).status == "active"
+        ]
     available_nodes = _load_available_nodes(
         store, [node.as_dict() for node, _ in ranked_hits], as_of
     )

@@ -47,10 +47,11 @@ export async function POST(request: Request) {
         { error: "Request must be valid JSON." },
         { status: 400 },
       );
+    console.error("evaluate error:", error);
     const message =
       error instanceof UpstreamError
         ? error.message
-        : "Could not complete the comparison. Check that the memory API is running and the model is reachable. Previous results have been retained.";
+        : `${error instanceof Error ? error.message : "Unknown error"}`;
     return Response.json(
       { error: message },
       { status: error instanceof UpstreamError ? error.status : 502 },

@@ -185,8 +185,10 @@ def create_app(service: MemoryApiService) -> Callable[..., Any]:
             return _respond(start_response, 409, {"error": str(exc)})
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             return _respond(start_response, 400, {"error": str(exc)})
-        except Exception:
-            return _respond(start_response, 500, {"error": "internal server error"})
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            return _respond(start_response, 500, {"error": f"internal server error: {exc}"})
 
     return application
 
