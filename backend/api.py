@@ -72,32 +72,29 @@ class MemoryApiService:
             return {"sources": [], "text": "", "token_estimate": 0}
         ids = source_ids[:limit]
         docs = list(self.sources_collection.find(
-            {"unique_key": {"$in": ids}},
-            {"_id": 0, "unique_key": 1, "complaint_type": 1, "descriptor": 1,
-             "borough": 1, "incident_zip": 1, "incident_address": 1,
-             "created_date": 1, "resolution_description": 1, "location": 1},
+            {"id": {"$in": ids}},
+            {"_id": 0, "id": 1, "text": 1, "occurred_at": 1, "metadata": 1},
         ))
         lines = []
         for doc in docs:
-            parts = [f"[Record {doc.get('unique_key', '?')}]"]
-            if doc.get("complaint_type"):
-                parts.append(f"Type: {doc['complaint_type']}")
-            if doc.get("descriptor"):
-                parts.append(f"Descriptor: {doc['descriptor']}")
-            if doc.get("borough"):
-                parts.append(f"Borough: {doc['borough']}")
-            if doc.get("incident_zip"):
-                parts.append(f"Zip: {doc['incident_zip']}")
-            if doc.get("incident_address"):
-                parts.append(f"Address: {doc['incident_address']}")
-            if doc.get("created_date"):
-                parts.append(f"Date: {doc['created_date']}")
-            if doc.get("resolution_description"):
-                parts.append(f"Resolution: {doc['resolution_description']}")
+            meta = doc.get("metadata") or {}
+            parts = [f"[Record {doc.get('id', '?')}]"]
+            parts.append(f"Type: {meta.get('complaint_type', 'Unknown')}")
+            if meta.get("descriptor"):
+                parts.append(f"Descriptor: {meta['descriptor']}")
+            if meta.get("borough"):
+                parts.append(f"Borough: {meta['borough']}")
+            if meta.get("incident_zip"):
+                parts.append(f"Zip: {meta['incident_zip']}")
+            if doc.get("occurred_at"):
+                occ = doc["occurred_at"]
+                parts.append(f"Date: {occ.isoformat() if hasattr(occ, 'isoformat') else occ}")
+            if meta.get("agency"):
+                parts.append(f"Agency: {meta['agency']}")
             lines.append(" | ".join(parts))
         text = "\n".join(lines)
         token_estimate = len(text.split())
-        return {"sources": docs, "text": text, "token_estimate": token_estimate, "count": len(docs)}
+        return {"text": text, "token_estimate": token_estimate, "count": len(docs)}
 
     def create_turn(
         self, session_id: str, prompt: str, idempotency_key: str
