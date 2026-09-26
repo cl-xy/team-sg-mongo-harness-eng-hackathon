@@ -72,9 +72,16 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - **Data layer:** MongoDB Atlas (hackathon sandbox — MUST use this for finalist eligibility)
 - **Embeddings:** Voyage AI (Automated Embeddings in Atlas)
 - **Search:** Atlas Vector Search + Atlas Search
-- **Agent framework:** Strands
+- **Agent orchestration (implemented):** custom Python CLI and harness loop (`scripts.run_harness` → `backend.harness.run_step`)
+- **Agent framework (planned):** Strands is not currently used by the harness
 - **Models:** via OpenRouter
 - **Frontend:** Vercel v0 (Next.js dashboard)
+
+### Implemented Python Loop
+
+The current run is a direct Python service loop, not a Strands agent. The CLI sorts records by availability time, divides them into batches, and calls `run_step` for each batch. In memory mode, each step ingests the source records, retrieves historical context, extracts memory nodes, durably merges them, groups an eligible cluster, and produces a recommendation. The Atlas factory uses the deterministic fixture extractor; OpenRouter can be used for merge judgements and the final recommendation. Baseline mode skips retrieval, extraction, merging and grouping.
+
+The loop emits JSON trace events for each step. Strands integration, an interactive agent tool loop, and the planned dashboard are not part of the current implementation.
 
 ## Setup Checklist
 
@@ -128,31 +135,17 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 
 ## Harness CLI
 
-Fetch a bounded, chronologically distributed NYC 311 slice (the end date is exclusive):
+Import every NYC 311 complaint in the six-month window directly into Atlas. The importer applies no complaint-type, borough or ZIP filters, has no row cap, and never writes a local data dump. It pages by day, preserves source IDs and event-time metadata, and keeps only fields available at complaint creation time:
 
 ```sh
-uv run python -m scripts.fetch_311 \
-  --start 2026-09-01 \
-  --end 2026-09-11 \
-  --limit 500 \
-  --complaint-type 'Noise - Street/Sidewalk' \
-  --descriptor 'Loud Music/Party' \
-  --borough MANHATTAN \
-  --zip 10031 \
-  --output fixtures/311-small.json
+uv run python -m scripts.import_311_to_atlas \
+  --start 2026-03-26 \
+  --end 2026-09-27
 ```
 
-Then replay it in chronological batches:
+The end date is exclusive. The current window contains 1,964,526 NYC 311 records across all complaint types.
 
-```sh
-python -m scripts.run_harness \
-  --records fixtures/311-small.json \
-  --services backend.runtime:create_services \
-  --mode memory \
-  --batch-size 50
-```
-
-Run the same pipeline against the Atlas sandbox (reads `311_memory.source_records`, persists `memory_nodes`, `memory_edges` and `short_term_batches`; needs `MONGODB_URI` in `.env`). With `OPENROUTER_API_KEY` set, the final recommendation is written by the model (default `anthropic/claude-haiku-4.5`, override with `OPENROUTER_MODEL`) from the current batch, the grouped summary and retrieved historical memory; without it, or if the call fails, the template recommendation is emitted and labelled `recommender: template`:
+Run the same pipeline against the Atlas sandbox (reads `311_memory.source_records`, persists `memory_nodes`, `memory_edges` and resumable `short_term_batches`; needs `MONGODB_URI` and `MONGODB_DATABASE` in `.env`). This uses the durable graph merge service and Matthew's bounded vector-seeded graph retriever (up to 5 seeds, 2 hops, 30 nodes, 60 edges and 2,000 estimated context tokens). The vector Search index must be READY and queryable for historical retrieval; until then, exact-identity merging remains available and retrieval returns empty context. With `OPENROUTER_API_KEY` set, the final recommendation is written by the model (default `anthropic/claude-haiku-4.5`, override with `OPENROUTER_MODEL`) from the current batch, the grouped summary and retrieved historical memory; without it, or if the call fails, the template recommendation is emitted and labelled `recommender: template`:
 
 ```sh
 uv run python -m scripts.run_harness \
@@ -162,7 +155,7 @@ uv run python -m scripts.run_harness \
   --batch-size 200
 ```
 
-The bundled `backend.runtime:create_services` factory is a deterministic, in-memory integration adapter; it does not connect to Atlas or call an LLM. It groups repeated observations using the available complaint type, descriptor and borough/ZIP fields; recommendations are explicitly labelled hypotheses, not validated root causes. Replace this adapter with the application services for persistent Atlas-backed runs. Use `--mode baseline` for the no-retrieval comparison; baseline runs ingest and recommend without extracting, merging or grouping memories. The CLI prints ordered JSON trace events and exits non-zero if the run emits an error.
+The bundled `backend.runtime:create_services` factory is a deterministic, in-memory integration adapter; it does not connect to Atlas or call an LLM. It groups repeated observations using the available complaint type, descriptor and borough/ZIP fields; recommendations are explicitly labelled hypotheses, not validated root causes. Use `--mode baseline` for the no-retrieval comparison; baseline runs ingest and recommend without extracting, merging or grouping memories. The CLI prints ordered JSON trace events and exits non-zero if the run emits an error.
 
 ## Submission
 
