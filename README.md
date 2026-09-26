@@ -94,6 +94,7 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 - Connects via Atlas service accounts, not personal credentials
 - Lets the agent read/write to Atlas through tool calls
 - Alternatively: connect the **MongoDB MCP Server** to Cursor for dev-time DB access
+- Team connection steps: [MongoDB Atlas MCP setup](docs/mongodb-atlas-mcp-setup.md)
 
 ### 3. MongoDB Agent Skills
 
@@ -124,6 +125,34 @@ NYC 311 Open Data (Socrata API). ~28M records, updated daily. No API key needed.
 
 - 1250 credits, code sent at 10:30am
 - Must redeem with a FREE account (not a paid plan)
+
+## Harness CLI
+
+Fetch a bounded, chronologically distributed NYC 311 slice (the end date is exclusive):
+
+```sh
+uv run python -m scripts.fetch_311 \
+  --start 2026-09-01 \
+  --end 2026-09-11 \
+  --limit 500 \
+  --complaint-type 'Noise - Street/Sidewalk' \
+  --descriptor 'Loud Music/Party' \
+  --borough MANHATTAN \
+  --zip 10031 \
+  --output fixtures/311-small.json
+```
+
+Then replay it in chronological batches:
+
+```sh
+python -m scripts.run_harness \
+  --records fixtures/311-small.json \
+  --services backend.runtime:create_services \
+  --mode memory \
+  --batch-size 50
+```
+
+The bundled `backend.runtime:create_services` factory is a deterministic, in-memory integration adapter; it does not connect to Atlas or call an LLM. It groups repeated observations using the available complaint type, descriptor and borough/ZIP fields; recommendations are explicitly labelled hypotheses, not validated root causes. Replace this adapter with the application services for persistent Atlas-backed runs. Use `--mode baseline` for the no-retrieval comparison; baseline runs ingest and recommend without extracting, merging or grouping memories. The CLI prints ordered JSON trace events and exits non-zero if the run emits an error.
 
 ## Submission
 
