@@ -125,11 +125,10 @@ The loop emits JSON trace events for each step. Strands integration, an interact
 - One API key, 500+ models
 - Expires 1 Oct
 
-### 6. Vercel v0
+### 6. Frontend dashboard
 
-- Redeem $30 credits at 10:30am (code sent to checked-in attendees)
-- Use to scaffold Next.js dashboard: "Build a dashboard that monitors my agent's context, memory and tool calls in real time"
-- Click Deploy for instant public URL for demo submission
+- Run the Next.js dashboard locally using the [frontend setup guide](frontend/README.md).
+- Inspect a recorded harness replay immediately, or configure the memory API and OpenRouter for live response comparisons.
 
 ### 8. OpenAI Codex (optional)
 
@@ -173,6 +172,18 @@ GROUPING_THRESHOLD=3 uv run python -m scripts.run_harness \
 ```
 
 `backend.atlas:create_merge_services` runs Jiacheng's durable merge engine with the OpenRouter identity judge and Matthew's bounded graph retrieval through the same harness. It is slower and needs any pending batch recovered first; it is not the recorded demo path.
+
+## Frontend dashboard
+
+The Next.js dashboard shows the backend workflow, memory graph, source evidence, event trace and a side-by-side normal versus memory response evaluation.
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. A clearly labeled recorded replay works immediately. For live comparisons, configure the merged memory API and OpenRouter in `frontend/.env.local`. See [frontend setup and evaluation details](frontend/README.md).
 
 ## Submission
 
