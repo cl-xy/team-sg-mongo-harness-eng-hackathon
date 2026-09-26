@@ -152,6 +152,16 @@ python -m scripts.run_harness \
   --batch-size 50
 ```
 
+Run the same pipeline against the Atlas sandbox (reads `311_memory.source_records`, persists `memory_nodes`, `memory_edges` and `short_term_batches`; needs `MONGODB_URI` in `.env`):
+
+```sh
+uv run python -m scripts.run_harness \
+  --records atlas \
+  --services backend.atlas:create_services \
+  --mode memory \
+  --batch-size 200
+```
+
 The bundled `backend.runtime:create_services` factory is a deterministic, in-memory integration adapter; it does not connect to Atlas or call an LLM. It groups repeated observations using the available complaint type, descriptor and borough/ZIP fields; recommendations are explicitly labelled hypotheses, not validated root causes. Replace this adapter with the application services for persistent Atlas-backed runs. Use `--mode baseline` for the no-retrieval comparison; baseline runs ingest and recommend without extracting, merging or grouping memories. The CLI prints ordered JSON trace events and exits non-zero if the run emits an error.
 
 ## Submission
