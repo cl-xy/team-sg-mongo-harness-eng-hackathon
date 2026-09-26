@@ -73,7 +73,7 @@ export default function Dashboard({
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState("all");
   const [prompt, setPrompt] = useState(
-    "What recurring issues do the 311 complaints reveal, and what upstream investigation would you recommend?",
+    "I'm a city council member with limited staff and budget. Which recurring 311 complaint patterns should I prioritise for the biggest constituent impact?",
   );
   const [session, setSession] = useState("311-dashboard");
   const dialog = useRef<HTMLDialogElement>(null);
