@@ -103,7 +103,11 @@ class WsgiTransport:
         self.calls: list[tuple[str, str]] = []
 
     def request(
-        self, method: str, path: str, body: Mapping[str, Any] | None = None
+        self,
+        method: str,
+        path: str,
+        body: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         from urllib.parse import urlsplit
 
@@ -116,6 +120,8 @@ class WsgiTransport:
             "CONTENT_LENGTH": str(len(encoded_body)),
             "wsgi.input": BytesIO(encoded_body),
         }
+        if headers and "Authorization" in headers:
+            environ["HTTP_AUTHORIZATION"] = headers["Authorization"]
         state: dict[str, Any] = {}
 
         def start_response(status: str, headers: list[tuple[str, str]]) -> None:
@@ -172,6 +178,29 @@ class ApiTests(unittest.TestCase):
     def test_validation_rejects_blank_prompt(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "HTTP 400"):
             self.client.create_turn("session-1", "   ", "prompt-1")
+
+    def test_health_check_is_public(self) -> None:
+        token_service = MemoryApiService(
+            self.conversations, self.graph, clock=lambda: NOW, api_token="shared-token"
+        )
+        transport = WsgiTransport(create_app(token_service))
+        self.assertEqual(transport.request("GET", "/healthz"), {"ok": True})
+
+    def test_api_token_rejects_unauthenticated_requests(self) -> None:
+        token_service = MemoryApiService(
+            self.conversations, self.graph, clock=lambda: NOW, api_token="shared-token"
+        )
+        transport = WsgiTransport(create_app(token_service))
+        with self.assertRaisesRegex(RuntimeError, "HTTP 401"):
+            transport.request("GET", "/v1/sessions/session-1/messages?limit=1")
+        self.assertEqual(
+            transport.request(
+                "GET",
+                "/v1/sessions/session-1/messages?limit=1",
+                headers={"Authorization": "Bearer shared-token"},
+            ),
+            {"messages": []},
+        )
 
     def test_harness_orders_memory_calls_and_injects_context(self) -> None:
         self.graph.hits = [{

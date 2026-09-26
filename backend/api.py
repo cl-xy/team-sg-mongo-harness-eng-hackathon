@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import date, datetime, timezone
+import hmac
 import json
 import re
 from typing import Any, Callable, Mapping
@@ -60,12 +61,14 @@ class MemoryApiService:
         clock: Callable[[], datetime] | None = None,
         token_counter: TokenCounter | None = None,
         sources_collection: Any | None = None,
+        api_token: str | None = None,
     ) -> None:
         self.conversation_store = conversation_store
         self.retrieval_store = retrieval_store
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.token_counter = token_counter
         self.sources_collection = sources_collection
+        self.api_token = api_token or None
 
     def get_raw_sources(self, source_ids: list[str], limit: int = 50) -> dict[str, Any]:
         if self.sources_collection is None:
@@ -166,6 +169,7 @@ def create_app(service: MemoryApiService) -> Callable[..., Any]:
     """Create a WSGI application exposing the memory API.
 
     Routes:
+      GET /healthz
       POST /v1/sessions/{session_id}/turns
       POST /v1/sessions/{session_id}/turns/{turn_id}/context
       POST /v1/sessions/{session_id}/turns/{turn_id}/response
@@ -176,6 +180,13 @@ def create_app(service: MemoryApiService) -> Callable[..., Any]:
         try:
             method = str(environ.get("REQUEST_METHOD", "GET")).upper()
             path = str(environ.get("PATH_INFO", "/"))
+            if path == "/healthz" and method == "GET":
+                return _respond(start_response, 200, {"ok": True})
+            if service.api_token and not hmac.compare_digest(
+                str(environ.get("HTTP_AUTHORIZATION", "")),
+                f"Bearer {service.api_token}",
+            ):
+                return _respond(start_response, 401, {"error": "unauthorized"})
             query = parse_qs(str(environ.get("QUERY_STRING", "")))
             result, status = _dispatch(service, method, path, query, environ)
             return _respond(start_response, status, result)

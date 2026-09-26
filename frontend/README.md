@@ -27,11 +27,12 @@ Copy `.env.example` to `.env.local` and set:
 
 ```dotenv
 MEMORY_API_URL=http://127.0.0.1:8000
+MEMORY_API_TOKEN=
 OPENROUTER_API_KEY=your-key
 OPENROUTER_MODEL=anthropic/claude-haiku-4.5
 ```
 
-Restart Next.js. Credentials are read only on the server. The root project's `.env` is not automatically loaded by Next.js.
+Restart Next.js. Credentials are read only on the server. The root project's `.env` is not automatically loaded by Next.js. `MEMORY_API_TOKEN` is optional for a local API, but should match the Fly secret of the same name in production.
 
 The merged conversation API in `backend/api.py` is storage-injected. A local Atlas-backed startup example, run from the repository root:
 
