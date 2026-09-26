@@ -141,7 +141,7 @@ class InMemoryStore:
 
 REGULAR_INDEXES = {
     'source_records': [('id', True), ('available_at', False)],
-    'memory_nodes': [('id', True), ('source_ids', False), ('identity_keys', False),
+    'memory_nodes': [('id', True), ('source_ids', False), ('identity_keys', False), ('group_id', False),
                      ([('kind', 1), ('scope_key', 1), ('status', 1), ('last_seen_at', -1)], False)],
     'memory_edges': [('id', True), ('source_id', False), ('target_id', False), ('source_ids', False)],
     'short_term_batches': [('batch_id', True), ('status', False)],

@@ -23,6 +23,14 @@ class SearchTests(unittest.TestCase):
         self.assertNotIn('queryVector',stage)
         self.assertEqual(result,[{'id':'n','score':.7}])
 
+    def test_group_id_is_an_indexed_vector_prefilter_for_summary_members(self):
+        search=AtlasMemorySearch(self.collection)
+        search.search_memories('which incidents support this?',5,{'group_id':'summary-1'})
+        vector_stage=self.collection.aggregate.call_args.args[0][0]['$vectorSearch']
+        self.assertEqual(vector_stage['filter']['group_id'],'summary-1')
+        self.assertIn({'type':'filter','path':'group_id'},search.index_definition()['fields'])
+        self.assertEqual(search.index_name,'memory_automated_v2')
+
     def test_explicit_mode_uses_voyage_query_and_document_types(self):
         voyage=Mock(); voyage.embed.return_value=[.1,.2,.3]
         search=AtlasMemorySearch(self.collection,mode='explicit',voyage=voyage,dimensions=3)

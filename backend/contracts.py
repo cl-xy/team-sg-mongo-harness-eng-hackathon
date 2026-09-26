@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 
@@ -37,6 +37,19 @@ class MemoryNode:
     status: NodeStatus = 'active'
     group_id: str | None = None
 
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            'id': self.id,
+            'kind': self.kind,
+            'text': self.text,
+            'scope_key': self.scope_key,
+            'source_ids': list(self.source_ids),
+            'first_seen_at': _isoformat(self.first_seen_at),
+            'last_seen_at': _isoformat(self.last_seen_at),
+            'status': self.status,
+            'group_id': self.group_id,
+        }
+
 
 @dataclass(slots=True)
 class MemoryEdge:
@@ -46,6 +59,16 @@ class MemoryEdge:
     relation: EdgeRelation
     weight: float
     source_ids: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            'id': self.id,
+            'source_id': self.source_id,
+            'target_id': self.target_id,
+            'relation': self.relation,
+            'weight': self.weight,
+            'source_ids': list(self.source_ids),
+        }
 
 
 @dataclass(slots=True)
@@ -79,6 +102,17 @@ class RetrievedContext:
     token_count: int
     truncated: bool
 
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            'seed_ids': list(self.seed_ids),
+            'nodes': [node.as_dict() for node in self.nodes],
+            'edges': [edge.as_dict() for edge in self.edges],
+            'source_ids': list(self.source_ids),
+            'context_text': self.context_text,
+            'token_count': self.token_count,
+            'truncated': self.truncated,
+        }
+
 
 @dataclass(slots=True)
 class GroupingLimits:
@@ -106,3 +140,13 @@ class TraceEvent:
     simulated_at: datetime
     type: TraceType
     payload: dict[str, Any]
+
+
+def _isoformat(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat().replace('+00:00', 'Z')

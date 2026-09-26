@@ -13,6 +13,8 @@ import math
 import re
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
+from backend.contracts import MemoryEdge, MemoryNode, RetrievedContext
+
 
 Document = Mapping[str, Any]
 TokenCounter = Callable[[str], int]
@@ -42,75 +44,6 @@ class RetrievalLimits:
             raise ValueError("max_context_tokens must be at least 1")
         if self.max_members_per_summary < 0:
             raise ValueError("max_members_per_summary cannot be negative")
-
-
-@dataclass(frozen=True)
-class MemoryNode:
-    id: str
-    kind: str
-    text: str
-    scope_key: str
-    source_ids: tuple[str, ...]
-    first_seen_at: datetime | None
-    last_seen_at: datetime | None
-    status: str
-    group_id: str | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "kind": self.kind,
-            "text": self.text,
-            "scope_key": self.scope_key,
-            "source_ids": list(self.source_ids),
-            "first_seen_at": _isoformat(self.first_seen_at),
-            "last_seen_at": _isoformat(self.last_seen_at),
-            "status": self.status,
-            "group_id": self.group_id,
-        }
-
-
-@dataclass(frozen=True)
-class MemoryEdge:
-    id: str
-    source_id: str
-    target_id: str
-    relation: str
-    weight: float
-    source_ids: tuple[str, ...]
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "source_id": self.source_id,
-            "target_id": self.target_id,
-            "relation": self.relation,
-            "weight": self.weight,
-            "source_ids": list(self.source_ids),
-        }
-
-
-@dataclass(frozen=True)
-class RetrievedContext:
-    seed_ids: list[str]
-    nodes: list[MemoryNode]
-    edges: list[MemoryEdge]
-    source_ids: list[str]
-    context_text: str
-    token_count: int
-    truncated: bool
-
-    def as_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable representation for the harness/API."""
-        return {
-            "seed_ids": self.seed_ids,
-            "nodes": [node.as_dict() for node in self.nodes],
-            "edges": [edge.as_dict() for edge in self.edges],
-            "source_ids": self.source_ids,
-            "context_text": self.context_text,
-            "token_count": self.token_count,
-            "truncated": self.truncated,
-        }
 
 
 class RetrievalStore(Protocol):
@@ -201,11 +134,17 @@ def retrieve_context(
         "last_seen_at": {"$lte": replay_time},
     }
 
-    candidate_seed_limit = max(limits.seed_limit * 4, limits.seed_limit)
+    requested_seed_candidates = max(limits.seed_limit * 4, limits.seed_limit)
+    # AtlasMemorySearch bounds a vector query to 100 candidates. Keep custom
+    # retrieval limits compatible and expose the tighter candidate search cap.
+    candidate_seed_limit = min(requested_seed_candidates, 100)
     raw_hits = store.search_memories(query, candidate_seed_limit, search_filters)
     eligible_seeds = _load_available_hits(store, raw_hits, replay_time)
     eligible_seeds.sort(key=lambda item: (-item[1], item[0].id))
-    truncated = len(eligible_seeds) > limits.seed_limit
+    truncated = (
+        candidate_seed_limit < requested_seed_candidates
+        or len(eligible_seeds) > limits.seed_limit
+    )
     seeds = eligible_seeds[: limits.seed_limit]
 
     if not seeds:
@@ -427,9 +366,10 @@ def _load_summary_members(
     if not member_ids:
         return [], [], False
 
-    member_candidate_limit = min(
+    requested_member_candidates = min(
         len(member_ids), max(limits.max_members_per_summary * 4, limits.max_members_per_summary)
     )
+    member_candidate_limit = min(requested_member_candidates, 100)
     member_hits = store.search_memories(
         query,
         member_candidate_limit,
@@ -461,7 +401,10 @@ def _load_summary_members(
     ][: limits.max_members_per_summary]
     chosen_ids = {node.id for node, _ in additions}
     chosen_edges = [edge_by_member[node_id] for node_id in sorted(chosen_ids) if node_id in edge_by_member]
-    truncated = len(available_nodes) > len(additions)
+    truncated = (
+        len(available_nodes) > len(additions)
+        or member_candidate_limit < len(member_ids)
+    )
     return additions, chosen_edges, truncated
 
 
@@ -542,7 +485,7 @@ def _parse_node(document: Document) -> MemoryNode:
         kind=str(document.get("kind", "fact")),
         text=str(document.get("text", "")),
         scope_key=str(document.get("scope_key", "")),
-        source_ids=tuple(sorted({str(item) for item in document.get("source_ids", [])})),
+        source_ids=sorted({str(item) for item in document.get("source_ids", [])}),
         first_seen_at=_datetime_value(document.get("first_seen_at")),
         last_seen_at=_datetime_value(document.get("last_seen_at")),
         status=str(document.get("status", "active")),
@@ -563,7 +506,7 @@ def _parse_edges(documents: Sequence[Document]) -> list[MemoryEdge]:
             target_id=target_id,
             relation=str(document.get("relation", "")),
             weight=float(document.get("weight", 1.0)),
-            source_ids=tuple(sorted({str(item) for item in document.get("source_ids", [])})),
+            source_ids=sorted({str(item) for item in document.get("source_ids", [])}),
         )
         edges[edge.id] = edge
     return list(edges.values())
@@ -602,10 +545,6 @@ def _utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
-
-
-def _isoformat(value: datetime | None) -> str | None:
-    return value.isoformat().replace("+00:00", "Z") if value else None
 
 
 def _requests_member_detail(query: str) -> bool:

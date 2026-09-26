@@ -151,6 +151,17 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(store.retrieved[0][0], ["a", "b"])
         self.assertIn("Sources: source-1", result.context_text)
 
+    def test_seed_oversampling_respects_atlas_search_limit(self) -> None:
+        store = store_for([node("seed")], scores={"seed": 0.9})
+
+        result = retrieve_context(
+            "noise pattern", "session-1", NOW,
+            RetrievalLimits(seed_limit=101, max_hops=0, max_nodes=101), store=store,
+        )
+
+        self.assertEqual(store.search_calls[0][1], 100)
+        self.assertTrue(result.truncated)
+
     def test_expands_relevant_edges_but_not_location_only_edges_or_entities(self) -> None:
         nodes = [
             node("seed", source_ids=("source-1",)),

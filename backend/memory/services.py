@@ -1,23 +1,38 @@
 """Wire Jiacheng's persistence into the existing harness without replacing it."""
 from dataclasses import replace
 from datetime import datetime, timezone
+from functools import partial
 
 from backend.contracts import GroupingLimits
 from .merge import MergeEngine
+from .retrieval import RetrievalLimits, retrieve_context
+from .retrieval_adapter import MongoMemoryRetrievalStore
 from .store import GroupingStoreAdapter
 
 
 class MemoryHarnessServices:
-    """Inject the team's extraction, retrieval, recommendation and summary callbacks.
+    """Wire persistence into the existing harness without replacing it.
 
-    No model, retrieval stub or database fallback is selected implicitly. Callers
-    can supply Atlas adapters or explicitly chosen fixture implementations.
+    Retrieval defaults to the concrete Mongo/vector adapter. Fixture callers can
+    inject a deterministic retrieval callback. No model or database fallback is
+    selected implicitly.
     """
-    def __init__(self, store, search, *, extract, retrieve, recommend, build_summary,
-                 judge=None, grouping_limits=None):
+    def __init__(self, store, search, *, extract, recommend, build_summary,
+                 retrieve=None, judge=None, grouping_limits=None,
+                 retrieval_limits=None):
         self.store = store
         self.engine = MergeEngine(store, search, judge)
-        self._extract, self._retrieve, self._recommend = extract, retrieve, recommend
+        self._extract, self._recommend = extract, recommend
+        self._retrieval_store = None
+        if retrieve is None:
+            self._retrieval_store = MongoMemoryRetrievalStore(store, search)
+            self._retrieve = partial(
+                retrieve_context,
+                limits=retrieval_limits or RetrievalLimits(),
+                store=self._retrieval_store,
+            )
+        else:
+            self._retrieve = retrieve
         self.build_summary = build_summary
         self.grouping_limits = grouping_limits or GroupingLimits()
         self.grouping_store = GroupingStoreAdapter(

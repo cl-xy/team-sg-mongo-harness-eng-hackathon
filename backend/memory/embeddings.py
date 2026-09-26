@@ -16,7 +16,10 @@ from .merge import plain
 
 
 LOGGER = logging.getLogger(__name__)
-FILTER_FIELDS = ('id', 'kind', 'scope_key', 'status', 'first_seen_at', 'last_seen_at', 'source_ids', 'group_id')
+FILTER_FIELDS = (
+    'id', 'kind', 'scope_key', 'status', 'first_seen_at', 'last_seen_at',
+    'source_ids', 'group_id',
+)
 
 
 def post_json(url, api_key, body):
@@ -150,7 +153,8 @@ class AtlasMemorySearch:
         if mode == 'explicit' and voyage is None:
             raise ValueError('Explicit mode requires a Voyage client')
         self.collection, self.mode, self.model = collection, mode, model
-        self.index_name = index_name or 'memory_'+mode+'_v1'
+        # v2 adds group_id as a vector prefilter for bounded summary-member retrieval.
+        self.index_name = index_name or 'memory_'+mode+'_v2'
         self.dimensions, self.voyage = dimensions, voyage
 
     @classmethod

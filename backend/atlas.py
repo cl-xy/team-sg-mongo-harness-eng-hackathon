@@ -22,6 +22,7 @@ from backend.contracts import (
 )
 from backend.recommendation import DEFAULT_MODEL, model_recommendation
 from backend.runtime import InMemoryHarnessServices
+from backend.memory.retrieval_adapter import MongoMemoryRetrievalStore as MongoRetrievalStore
 
 
 def _load_env(path: Path = Path('.env')) -> dict[str, str]:
@@ -229,32 +230,7 @@ def create_merge_services():
             RetrievalLimits(),
             store=retrieval_store,
         )
-        return RetrievedContext(
-            seed_ids=result.seed_ids,
-            nodes=[MemoryNode(
-                id=node.id,
-                kind=node.kind,
-                text=node.text,
-                scope_key=node.scope_key,
-                source_ids=list(node.source_ids),
-                first_seen_at=node.first_seen_at or as_of,
-                last_seen_at=node.last_seen_at or as_of,
-                status=node.status,
-                group_id=node.group_id,
-            ) for node in result.nodes],
-            edges=[MemoryEdge(
-                id=edge.id,
-                source_id=edge.source_id,
-                target_id=edge.target_id,
-                relation=edge.relation,
-                weight=edge.weight,
-                source_ids=list(edge.source_ids),
-            ) for edge in result.edges],
-            source_ids=result.source_ids,
-            context_text=result.context_text,
-            token_count=result.token_count,
-            truncated=result.truncated,
-        )
+        return result
 
     return MemoryHarnessServices(
         store, search, judge=judge,
@@ -265,38 +241,6 @@ def create_merge_services():
 def create_services():
     """Create the Atlas-backed merge, bounded-retrieval, and harness services."""
     return create_merge_services()
-
-
-class MongoRetrievalStore:
-    """Matthew's RetrievalStore over Jiacheng's Mongo collections and vector search."""
-
-    def __init__(self, database: Database, search) -> None:
-        self.database = database
-        self.search = search
-
-    def search_memories(self, text: str, limit: int, filters) -> list[dict]:
-        hits = self.search.search_memories(text, min(max(limit, 1), 100), dict(filters))
-        return [{'node': hit, 'score': hit.get('score', 0.0)} for hit in hits]
-
-    def get_memory_nodes(self, node_ids: Sequence[str]) -> list[dict]:
-        return list(self.database.memory_nodes.find({'id': {'$in': list(node_ids)}}, {'_id': False}))
-
-    def get_memory_edges(self, node_ids: Sequence[str], limit: int) -> list[dict]:
-        ids = list(node_ids)
-        cursor = self.database.memory_edges.find(
-            {'$or': [{'source_id': {'$in': ids}}, {'target_id': {'$in': ids}}]}, {'_id': False},
-        ).sort('id', 1).limit(max(limit, 1))
-        return list(cursor)
-
-    def get_source_records(self, source_ids: Sequence[str]) -> list[dict]:
-        return list(self.database.source_records.find({'id': {'$in': list(source_ids)}}, {'_id': False}))
-
-    def mark_nodes_retrieved(self, node_ids: Sequence[str], retrieved_at: datetime) -> None:
-        self.database.memory_nodes.update_many(
-            {'id': {'$in': list(node_ids)}},
-            {'$inc': {'retrieval_count': 1}, '$set': {'last_retrieved_at': retrieved_at}},
-        )
-
 
 
 def create_fast_services() -> AtlasHarnessServices:
