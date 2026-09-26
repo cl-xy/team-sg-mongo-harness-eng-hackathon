@@ -10,7 +10,7 @@ Build one working path: timestamped 311 records → concept extraction → short
 
 The objective is to preserve useful information under a context budget. A smaller graph is not, by itself, evidence of better memory.
 
-Keep MongoDB Atlas as the required persistent store, Voyage Automated Embeddings, Atlas Vector Search, Strands/OpenRouter and the Next.js dashboard. Use one Python backend for the proposed memory functions and NetworkX; keep an existing working backend if teammates already have one. Do not introduce a separate graph database or migrate working code for this plan. The repository currently contains documentation, not an application scaffold.
+Keep MongoDB Atlas as the required persistent store, Voyage Automated Embeddings, Atlas Vector Search, Strands/OpenRouter and the Next.js dashboard. Use one Python backend for the proposed memory functions and NetworkX; keep an existing working backend if teammates already have one. Do not introduce a separate graph database or migrate working code for this plan. The repository began as documentation-only; this branch adds Matthew's storage-injected retrieval module, while the remaining application scaffold and Atlas adapter are still integration work.
 
 ## Work split
 
@@ -50,7 +50,8 @@ Use string IDs at module boundaries; UTC timestamps; JSON-serialisable payloads.
 | `MemoryEdge` / `memory_edges` | `id`, `source_id`, `target_id`, `relation`, `weight`, `source_ids`. Relation examples: `related_to`, `located_at`, `contradicts`, `member_of`. |
 | `GraphBatch` / `short_term_batches` | `batch_id`, `session_id`, `as_of`, `nodes`, `edges`, `source_ids`, `status` (`pending`, `committed`). Node IDs are local until merging remaps them. |
 | `MergeResult` | `batch_id`, `id_map`, `created_ids`, `updated_ids`, `edge_ids`, `committed`. |
-| `RetrievedContext` | `seed_ids`, `nodes`, `edges`, `source_ids`, `context_text`, `token_count`, `truncated`. |
+| `RetrievalLimits` | `seed_limit` (5), `max_hops` (2), `max_nodes` (30), `max_edges` (60), `max_context_tokens` (2,000), `max_members_per_summary` (5). All are caller-overridable; values must be non-negative, with positive seed/node/token caps. |
+| `RetrievedContext` | `seed_ids`, `nodes`, `edges`, `source_ids`, `context_text`, `token_count`, `truncated`. `context_text` is the compact prompt-ready rendering; the other fields retain structured provenance and trace data. |
 | `GroupingResult` | `snapshot_id`, `communities`, `eligible_sizes`, `selected_member_ids`, `summary_id` (nullable), `context_tokens_before`, `context_tokens_after`. |
 | `TraceEvent` | `run_id`, `sequence`, `simulated_at`, `type`, `payload`. Types: `ingested`, `extracted`, `merged`, `retrieved`, `clustered`, `grouped`, `recommended`, `scored`, `error`. |
 
@@ -60,7 +61,8 @@ Public functions:
 extract_concepts(records: list[SourceRecord], session_id: str) -> GraphBatch
 merge_graph(batch: GraphBatch) -> MergeResult
 retrieve_context(query: str, session_id: str, as_of: datetime,
-                 limits: RetrievalLimits) -> RetrievedContext
+                 limits: RetrievalLimits, *, store: RetrievalStore,
+                 token_counter: TokenCounter | None = None) -> RetrievedContext
 group_oversized_clusters(as_of: datetime, limits: GroupingLimits) -> GroupingResult
 run_step(records: list[SourceRecord], mode: str) -> list[TraceEvent]
 ```
@@ -89,14 +91,24 @@ Embedding similarity can capture meaning, including paraphrases. It is a candida
 
 ## Matthew — retrieval
 
-1. Query long-term memory for five vector seed nodes. Filter out archived nodes and evidence unavailable at the replay clock.
-2. Expand one hop initially, at most two hops. Use explicit edge queries and a visited set; stop at **30 nodes, 60 edges or 2,000 context tokens**, whichever binds first. These are starting demo settings.
-3. Follow relevant relations; avoid expanding generic hubs such as an agency into every connected complaint. A shared location does not automatically make every complaint relevant.
-4. Rank and deduplicate the selected material; include seed explanations, useful neighbours and source IDs. Increment retrieval counters only for nodes actually placed in context.
-5. When a summary is retrieved, include the summary first and expand its `member_of` links only when needed, within the same budget. Do not include both the full summary and all members by default.
-6. Combine retrieved long-term context with the current short-term context. An empty search result is a valid state.
+`backend/memory/retrieval.py` defines the retrieval-specific `RetrievalLimits`, `RetrievedContext` and `RetrievalStore` protocol. The store is injected so the module can run against a fixture before Jiacheng's Atlas adapter is ready. It requires these adapter operations:
 
-The vector search seeds and the knowledge graph are separate structures: the vector index is not the domain graph. Use two straightforward operations—semantic seed search, then bounded edge traversal—to keep this implementation understandable. MongoDB requires `$vectorSearch` to be the first stage of its aggregation pipeline. [MongoDB query documentation](https://www.mongodb.com/docs/vector-search/query/aggregation-stages/vector-search-stage/)
+- `search_memories(text, limit, filters)` returns ranked hits shaped as `{"node": <MemoryNode document>, "score": <similarity score>}`. Support `status`, `first_seen_at`, `last_seen_at` and `group_id` filters.
+- `get_memory_nodes(node_ids)` reads selected graph nodes.
+- `get_memory_edges(node_ids, limit)` reads edges incident to either endpoint in the requested IDs. Edges need evidence `source_ids`; replay-time retrieval omits edges without timestampable evidence.
+- `get_source_records(source_ids)` reads each source's `available_at` timestamp.
+- `mark_nodes_retrieved(node_ids, retrieved_at)` increments counters only for nodes returned in context.
+
+Retrieval steps:
+
+1. Query the vector index for up to **5** active seed nodes, filtering `first_seen_at` and `last_seen_at` to the replay clock. Validate every node's source records against `available_at`; exclude a node if any supporting source is missing or future-only. Exclude a summary whose text may incorporate future evidence rather than trimming its citations and leaving future-derived text behind.
+2. Rank seeds by vector score, with node ID as the deterministic tie-breaker. Expand through explicit edge queries with a visited set, to at most **2 hops**. Rank neighbors by parent relevance × relation factor × `0.5` per hop; stable ID ordering breaks ties. Follow `related_to`, `supports`, and `contradicts`. Do not traverse `located_at` by itself or use generic entity hubs as expansion pivots. Include graph edges in the result only when both endpoints are selected.
+3. Treat summary expansion as an on-demand detail path. Include a summary seed directly. Expand its `member_of` links only when the query asks for record-level detail (one of `cite`, `evidence`, `example`, `exact`, `incident`, `proof`, `record`, `source`, `specific`, `when`, `where`, or `which`). Search within that summary's `group_id`, require a matching `member_of` edge, and take at most **5** relevant members ranked by the same query vector score. Do not expand summary members for broad questions by default.
+4. Stop when any cap binds: **30 nodes, 60 edges, 2,000 context tokens**, or the applicable hop/member cap. These are initial demo limits, not tuned performance claims. Pack seed nodes first, then neighbors by descending score, depth, and ID; this keeps a selected summary ahead of its member details. Pack edges by descending weight then relation and ID. Set `truncated` when candidates are omitted by a cap.
+5. Return a structured `RetrievedContext`. Its `context_text` contains the selected node text, up to five inline source IDs per node, and selected relationships in a prompt-ready format; `nodes`, `edges`, `seed_ids` and the full distinct `source_ids` remain available to the harness and dashboard. This keeps large summary provenance from consuming the prompt budget. The harness places `context_text` beside the current short-term context in the prompt. Empty retrieval returns an empty context and is valid.
+6. Increment `retrieval_count` and set `last_retrieved_at` only for nodes present in the final `context_text`, using the simulated `as_of` time. Use the harness tokenizer via `token_counter` when available; otherwise use the module's deterministic UTF-8 byte-based estimate and report that it is an estimate.
+
+No PageRank, extra graph database, runtime LLM summarization, or plan/decision persistence is part of Matthew's retrieval module. The vector search produces query-relevant seeds; edge traversal supplies bounded neighboring context. The vector index and knowledge graph remain separate structures. MongoDB requires `$vectorSearch` to be the first stage of its aggregation pipeline, so seed retrieval stays behind Jiacheng's shared `search_memories` adapter. [MongoDB query documentation](https://www.mongodb.com/docs/vector-search/query/aggregation-stages/vector-search-stage/)
 
 ## Emmanuel — Louvain, size-triggered grouping and harness
 
@@ -142,6 +154,8 @@ Louvain can produce internally disconnected communities. Split any returned comm
 - **Provenance:** every extracted fact, merged pattern and summary resolves to existing sources.
 - **Merge safety:** a paraphrase merges; different locations and conflicting facts do not; replaying the same batch changes no evidence count.
 - **Retrieval bounds:** a cyclic graph terminates; archived and future-only evidence is excluded; output stays under node, edge and token caps.
+- **Summary retrieval:** broad queries return the summary without all members; detail queries expand only matching `member_of` members, within node, edge and token budgets.
+- **Retrieval accounting:** only nodes included in `context_text` have their counters incremented; future source evidence never appears in returned text or citations.
 - **Grouping rule:** with clusters of 12, 9 and 4 ungrouped nodes and threshold 8, select 12 first, then 9 on the next pass. Size 8 does not trigger. Connectedness checks happen before these counts.
 - **Grouping safety:** rerunning the same selection creates no duplicate summary; all member sources remain available; summary retrieval can expand back to members.
 - **End-to-end:** an early pattern outside the baseline context window is retrieved later and cited. Show an actual run; do not assume the baseline will fail.
