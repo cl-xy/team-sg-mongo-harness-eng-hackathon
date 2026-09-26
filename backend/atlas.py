@@ -5,11 +5,20 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from pymongo import MongoClient, UpdateOne
 from pymongo.database import Database
 
-from backend.contracts import GraphBatch, MemoryEdge, MemoryNode, MergeResult, SourceRecord
+from backend.contracts import (
+    GraphBatch,
+    MemoryEdge,
+    MemoryNode,
+    MergeResult,
+    RetrievedContext,
+    SourceRecord,
+)
+from backend.recommendation import DEFAULT_MODEL, model_recommendation
 from backend.runtime import InMemoryHarnessServices
 
 
@@ -45,9 +54,12 @@ def load_source_records(database: Database) -> list[SourceRecord]:
 class AtlasHarnessServices(InMemoryHarnessServices):
     """Persists the memory graph to Atlas while reusing the deterministic pipeline."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, *, openrouter_key: str | None = None, model: str = DEFAULT_MODEL) -> None:
         super().__init__()
         self.database = database
+        self.openrouter_key = openrouter_key
+        self.model = model
+        self.latest_summary: str | None = None
         database.memory_nodes.create_index('id', unique=True)
         database.memory_nodes.create_index('source_ids')
         database.memory_edges.create_index('id', unique=True)
@@ -99,6 +111,15 @@ class AtlasHarnessServices(InMemoryHarnessServices):
     def insert_summary(self, summary: MemoryNode) -> None:
         super().insert_summary(summary)
         self._upsert_nodes([summary.id])
+        self.latest_summary = summary.text
+
+    def recommend(self, records: Sequence[SourceRecord], context: RetrievedContext | None) -> dict[str, Any]:
+        fallback = super().recommend(records, context)
+        if not self.openrouter_key:
+            return {**fallback, 'recommender': 'template'}
+        return model_recommendation(
+            self.openrouter_key, self.model, records, context, self.latest_summary, fallback,
+        )
 
     def insert_member_edge(self, edge: MemoryEdge) -> None:
         super().insert_member_edge(edge)
@@ -110,4 +131,9 @@ class AtlasHarnessServices(InMemoryHarnessServices):
 
 
 def create_services() -> AtlasHarnessServices:
-    return AtlasHarnessServices(connect())
+    env = _load_env()
+    return AtlasHarnessServices(
+        connect(),
+        openrouter_key=env.get('OPENROUTER_API_KEY'),
+        model=env.get('OPENROUTER_MODEL', DEFAULT_MODEL),
+    )

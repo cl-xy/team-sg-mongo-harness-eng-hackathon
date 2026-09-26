@@ -152,7 +152,7 @@ python -m scripts.run_harness \
   --batch-size 50
 ```
 
-Run the same pipeline against the Atlas sandbox (reads `311_memory.source_records`, persists `memory_nodes`, `memory_edges` and `short_term_batches`; needs `MONGODB_URI` in `.env`):
+Run the same pipeline against the Atlas sandbox (reads `311_memory.source_records`, persists `memory_nodes`, `memory_edges` and `short_term_batches`; needs `MONGODB_URI` in `.env`). With `OPENROUTER_API_KEY` set, the final recommendation is written by the model (default `anthropic/claude-haiku-4.5`, override with `OPENROUTER_MODEL`) from the current batch, the grouped summary and retrieved historical memory; without it, or if the call fails, the template recommendation is emitted and labelled `recommender: template`:
 
 ```sh
 uv run python -m scripts.run_harness \
